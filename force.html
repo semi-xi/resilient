@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <style>
+        html, body, svg {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <svg viewBox="-400 -400 800 800">
+        <path id="links" fill="none" stroke="gray"></path>
+    </svg>
+</body>
+<script src="vector.js"></script>
+<script>
+    /* jshint browser: true */
+    var animate=null;
+    var oldHTML='';
+    var times=0;
+    var points = 'a,b,c,d,e,f,g,h'.split(',').map(function(name, index, arr) {
+        return {
+            name: name,
+            color: 'hsl(' + (360 * index / arr.length) + ', 100%, 60%)'
+        };
+    });
+    var relation = 300;
+    var svg = document.querySelector('svg');
+    var k = 0.05;
+
+    var Vector = window.Vector;
+
+    function random(min, max) {
+        return Math.round(min + (max - min) * Math.random());
+    }
+
+    points.forEach(function(point) {
+        var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        var x = random(-200, 200);
+        var y = random(-200, 200);
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', y);
+        circle.setAttribute('r', 10);
+        circle.setAttribute('fill', point.color);
+
+        svg.appendChild(circle);
+
+        point.circle = circle;
+        point.s = new Vector(x, y);
+        point.v = new Vector();
+        point.a = new Vector();
+
+        
+    });
+    oldHTML=svg.innerHTML;
+    var lastFrameTime = +new Date();
+
+    function update() {
+        var frameTime = +new Date();
+        var t = frameTime - lastFrameTime;
+
+        t /= 100;
+
+        // 点位置更新
+        points.forEach(function(pa) {
+            var f = new Vector();
+
+            // 计算合力
+            points.forEach(function(pb) {
+                if (pa == pb) return;
+
+                var x = Vector.fromPoints(pa.s, pb.s);
+                var delta = x.length() - relation;
+
+                // f = k * x
+                f = f.add(x.normalize(delta * k)); // 矢量表示成  这个矢量的大小乘以他的单位向量 是一个二位坐标
+            });
+
+            pa.a = f;
+            pa.v = pa.v.add(pa.a.multipy(t)).multipy(0.98);
+            pa.s = pa.s.add(pa.v.multipy(t));
+
+            pa.circle.setAttribute('cx', parseInt(pa.s.x));
+            pa.circle.setAttribute('cy', parseInt(pa.s.y));
+        });
+
+        // 连线更新
+        var linkPath = [];
+//         var index=0;
+        points.forEach(function(pa) {
+            //移动到第1个点  建立连线到第2个点
+            var sa = pa.s;
+            points.forEach(function(pb) {
+                if (pa == pb) return;
+                var sb = pb.s;
+                linkPath = linkPath.concat([
+                    'M', parseInt(sa.x), parseInt(sa.y),
+                    'L', parseInt(sb.x), parseInt(sb.y)
+                ]);
+            });
+        });
+        
+//        if(svg.innerHTML == oldHTML){
+////            times++;
+////            if(times == 100){
+////                window.cancelAnimationFrame(animate);
+////            }
+//        } else{
+             document.getElementById('links').setAttribute('d', linkPath.join(' '));
+            lastFrameTime = frameTime;
+           animate= window.requestAnimationFrame(update);
+            oldHTML=svg.innerHTML;
+//        }
+           
+        
+    }
+
+    animate=window.requestAnimationFrame(update);
+
+</script>
+</html>
